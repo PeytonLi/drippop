@@ -1,0 +1,7 @@
+{
+  "image_width": 1080,
+  "image_height": 1920,
+  "coordinate_space": "normalized_upright_xyxy",
+  "persons": [],
+  "manual_selection_required": true
+}

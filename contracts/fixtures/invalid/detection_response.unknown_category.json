@@ -1,0 +1,29 @@
+{
+  "image_width": 1080,
+  "image_height": 1920,
+  "coordinate_space": "normalized_upright_xyxy",
+  "persons": [
+    {
+      "id": "p1",
+      "box": [
+        0.1,
+        0.1,
+        0.9,
+        0.9
+      ],
+      "garments": [
+        {
+          "id": "g1",
+          "category": "hat",
+          "box": [
+            0.2,
+            0.1,
+            0.4,
+            0.2
+          ]
+        }
+      ]
+    }
+  ],
+  "manual_selection_required": false
+}

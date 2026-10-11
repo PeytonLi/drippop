@@ -1,0 +1,12 @@
+{
+  "_comment": "Coordinator-owned. A category becomes enabled only after it passes Gate 2 real-provider tests (docs/evidence/gate2-provider.md). Until then generation fails closed with category_unavailable outside fake mode.",
+  "enabled": [],
+  "candidates": [
+    "upper_body",
+    "full_body"
+  ],
+  "fake_mode_enabled": [
+    "upper_body",
+    "full_body"
+  ]
+}

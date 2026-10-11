@@ -1,0 +1,29 @@
+{
+  "image_width": 1080,
+  "image_height": 1920,
+  "coordinate_space": "normalized_upright_xyxy",
+  "persons": [
+    {
+      "id": "p1",
+      "box": [
+        0.15,
+        0.12,
+        0.84,
+        0.95
+      ],
+      "garments": [
+        {
+          "id": "g1",
+          "category": "upper_body",
+          "box": [
+            0.22,
+            0.31,
+            0.73,
+            0.6
+          ]
+        }
+      ]
+    }
+  ],
+  "manual_selection_required": false
+}

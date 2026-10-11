@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drippop.dev/contracts/schemas/job_response.schema.json",
+  "title": "JobResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "job_id",
+    "status",
+    "phase",
+    "created_at",
+    "expires_at",
+    "poll_after_ms",
+    "result_available",
+    "error"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{16,64}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "processing",
+        "succeeded",
+        "failed",
+        "canceled"
+      ]
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "preparing",
+        "generating",
+        "finalizing"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "poll_after_ms": {
+      "type": "integer",
+      "minimum": 500,
+      "maximum": 60000
+    },
+    "result_available": {
+      "type": "boolean"
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "error.schema.json"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result_available": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "succeeded"
+          },
+          "error": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "failed"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "error": {
+            "$ref": "error.schema.json"
+          },
+          "result_available": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "canceled"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result_available": {
+            "const": false
+          }
+        }
+      }
+    }
+  ]
+}

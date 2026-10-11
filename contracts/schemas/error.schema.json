@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drippop.dev/contracts/schemas/error.schema.json",
+  "title": "SafeError",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "code",
+    "message",
+    "retryable"
+  ],
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "invalid_image",
+        "unsupported_reference",
+        "analysis_unavailable",
+        "active_job_exists",
+        "quota_exceeded",
+        "idempotency_conflict",
+        "provider_rejected",
+        "generation_status_unknown",
+        "generation_timeout",
+        "result_expired",
+        "job_canceled",
+        "unauthenticated",
+        "not_found",
+        "invalid_request",
+        "category_unavailable",
+        "service_unavailable"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "retryable": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "invalid_image",
+    "message": "That image couldn't be read. Use a JPEG or PNG.",
+    "retryable": false
+  }
+}

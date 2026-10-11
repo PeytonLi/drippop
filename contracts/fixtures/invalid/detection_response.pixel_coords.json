@@ -1,0 +1,18 @@
+{
+  "image_width": 1080,
+  "image_height": 1920,
+  "coordinate_space": "pixels",
+  "persons": [
+    {
+      "id": "p1",
+      "box": [
+        100,
+        200,
+        800,
+        1800
+      ],
+      "garments": []
+    }
+  ],
+  "manual_selection_required": false
+}
