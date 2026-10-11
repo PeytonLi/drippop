@@ -141,8 +141,10 @@ class DevTryOnHarness(
                         pollMs = json.optLong("poll_after_ms", POLL_MS).takeIf { it > 0 } ?: POLL_MS
                         when (val status = json.optString("status")) {
                             "succeeded" -> done = true
-                            "failed", "canceled" ->
-                                return@launch fail("The preview $status (${json.optString("error_code", "unknown")}).")
+                            "failed", "canceled" -> {
+                                val errorCode = json.optJSONObject("error")?.optString("code")?.takeIf { it.isNotEmpty() } ?: "unknown"
+                                return@launch fail("The preview $status ($errorCode).")
+                            }
                             else -> _state.value = HarnessState.Generating(s.frame, s.bitmap, json.optString("phase", "working"))
                         }
                     }

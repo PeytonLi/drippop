@@ -89,7 +89,13 @@ class SupabaseAnonAuth(
                     .build()
                 http.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        AuthOutcome.Rejected
+                        // Only a definitive auth rejection falls through to signup;
+                        // 429/5xx/anything else is transient and must keep the session.
+                        if (response.code == 400 || response.code == 401 || response.code == 403) {
+                            AuthOutcome.Rejected
+                        } else {
+                            AuthOutcome.NetworkError
+                        }
                     } else {
                         val body = response.body?.string().orEmpty()
                         val json = runCatching { JSONObject(body) }.getOrNull()

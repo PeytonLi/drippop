@@ -81,6 +81,18 @@ class SupabaseAnonAuthTest {
     }
 
     @Test
+    fun refreshServerErrorReturnsNullAndKeepsSession() = runTest {
+        store.put("access_token", "stale")
+        store.put("expires_at", "0")
+        store.put("refresh_token", "r0")
+        server.enqueue(MockResponse().setResponseCode(503))
+        assertNull(auth().accessToken())
+        assertEquals("/auth/v1/token?grant_type=refresh_token", server.takeRequest().path)
+        assertEquals(1, server.requestCount)
+        assertEquals("r0", store.get("refresh_token"))
+    }
+
+    @Test
     fun apikeyHeaderIsSent() = runTest {
         server.enqueue(tokenResponse("a1"))
         auth().accessToken()
