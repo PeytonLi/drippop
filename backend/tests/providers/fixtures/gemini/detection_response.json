@@ -1,0 +1,19 @@
+{
+  "_provenance": "constructed from https://ai.google.dev/gemini-api/docs/image-understanding (accessed 2026-10-11), not recorded from a live call",
+  "candidates": [
+    {
+      "finishReason": "STOP",
+      "content": {
+        "parts": [
+          {
+            "text": "{\"persons\":[{\"box_2d\":[100,200,900,800],\"garments\":[{\"category\":\"upper_body\",\"box_2d\":[200,300,500,700]}]}]}"
+          }
+        ]
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 12,
+    "candidatesTokenCount": 20
+  }
+}
