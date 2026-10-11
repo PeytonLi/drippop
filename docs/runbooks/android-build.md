@@ -36,9 +36,10 @@ java -version   # openjdk version "17.0.x"
 ```bash
 export ANDROID_HOME="$HOME/android-sdk"
 mkdir -p "$ANDROID_HOME/cmdline-tools"
-# Current zip name: https://developer.android.com/studio#command-line-tools-only
+# Verified 2026-10-11 (cmdline-tools 23.0). Newer builds: https://developer.android.com/studio#command-line-tools-only
 curl -fL --retry 5 --retry-delay 10 -o /tmp/clt.zip \
-  https://dl.google.com/android/repository/commandlinetools-linux-<build>_latest.zip
+  https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip
+echo "e025545c62a8e64c7559119566a569fb1dec5f60  /tmp/clt.zip" | sha1sum -c -
 unzip -q /tmp/clt.zip -d "$ANDROID_HOME/cmdline-tools"
 mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
