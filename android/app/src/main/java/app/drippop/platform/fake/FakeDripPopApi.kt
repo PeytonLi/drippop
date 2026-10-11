@@ -107,8 +107,8 @@ class FakeDripPopApi(
         return when (job.status) {
             Status.SUCCEEDED -> ApiResult.Ok(renderResult(job.person, job.reference))
             Status.CANCELED -> ApiResult.Error(409, "job_canceled", false)
-            // Contract (D-004) defines 409 for not-ready without a dedicated code.
-            else -> ApiResult.Error(409, "invalid_request", true)
+            // Contract defines 409 result_not_ready (retryable) while queued/processing.
+            else -> ApiResult.Error(409, "result_not_ready", true)
         }
     }
 

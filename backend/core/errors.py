@@ -9,6 +9,7 @@ SAFE_MESSAGES: dict[str, str] = {
     "generation_status_unknown": "We couldn't confirm this preview. Start a new try-on.",
     "generation_timeout": "The preview took too long. Start a new try-on to try again.",
     "result_expired": "This preview has expired.",
+    "result_not_ready": "This preview isn't ready yet.",
     "job_canceled": "This try-on was canceled.",
     "unauthenticated": "Sign in to continue.",
     "not_found": "Not found.",

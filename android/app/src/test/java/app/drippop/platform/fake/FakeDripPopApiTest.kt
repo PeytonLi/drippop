@@ -40,7 +40,7 @@ class FakeDripPopApiTest {
         assertEquals("queued", status(created))
         val id = jobId(created)
         assertTrue(Regex("^[A-Za-z0-9_-]{16,64}$").matches(id))
-        assertEquals(ApiResult.Error(409, "invalid_request", true), api.getResult(id))
+        assertEquals(ApiResult.Error(409, "result_not_ready", true), api.getResult(id))
         assertEquals("processing", status(api.getJob(id).ok()))
         val done = api.getJob(id).ok()
         assertEquals("succeeded", status(done))
