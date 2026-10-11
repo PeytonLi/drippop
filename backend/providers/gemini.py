@@ -30,19 +30,19 @@ BOX = {
     "maxItems": 4,
     "items": {"type": "integer", "minimum": 0, "maximum": 1000},
 }
+# List caps are enforced after parsing: the Gemini API rejects maxItems here
+# combined with the 4-item box bounds (generic 400 INVALID_ARGUMENT).
 RESPONSE_SCHEMA = {
     "type": "object",
     "properties": {
         "persons": {
             "type": "array",
-            "maxItems": 8,
             "items": {
                 "type": "object",
                 "properties": {
                     "box_2d": BOX,
                     "garments": {
                         "type": "array",
-                        "maxItems": 8,
                         "items": {
                             "type": "object",
                             "properties": {

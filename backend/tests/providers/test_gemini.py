@@ -156,6 +156,17 @@ async def test_happy_path_converts_boxes_and_matches_contract_schema() -> None:
         "responseJsonSchema": RESPONSE_SCHEMA,
         "thinkingConfig": {"thinkingLevel": "low"},
     }
+    # The live API 400s when list maxItems combine with the 4-item box bounds;
+    # caps are enforced post-parse instead (see providers/gemini.py).
+    schema = sent["generationConfig"]["responseJsonSchema"]
+    persons = schema["properties"]["persons"]
+    assert "maxItems" not in persons
+    garments = persons["items"]["properties"]["garments"]
+    assert "maxItems" not in garments
+    person_box = persons["items"]["properties"]["box_2d"]
+    garment_box = garments["items"]["properties"]["box_2d"]
+    for box in (person_box, garment_box):
+        assert box["minItems"] == 4 and box["maxItems"] == 4
 
 
 @pytest.mark.asyncio
