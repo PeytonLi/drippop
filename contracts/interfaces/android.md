@@ -62,6 +62,8 @@ sealed interface ApiResult<out T> {
 }
 ```
 
+Note: the frozen CoordinateMapper methods don't receive the frame geometry, so implementations are constructed with the source frame's upright widthPx/heightPx and the display rotation (0/90/180/270). DefaultCoordinateMapper takes these as constructor arguments.
+
 Try-on UI state: `idle, capturing, analyzing, selecting, uploading, generating, ready, error` carrying
 `frameId`, `attemptId`, `selectionVersion`. A response is applied only if all three still match.
 Recovery store (app-private, excluded from backup): `{attemptId, idempotencyKey, jobId?, pendingDelete, category, inputPaths}`.

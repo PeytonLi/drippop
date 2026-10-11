@@ -126,7 +126,7 @@ paths:
       - {name: job_id, in: path, required: true, schema: {type: string, pattern: "^[A-Za-z0-9_-]{16,64}$"}}
     get:
       summary: Stream the generated image
-      description: Only for succeeded, unexpired, undeleted jobs owned by the caller.
+      description: Only for succeeded, unexpired, undeleted jobs owned by the caller. 409 result_not_ready (retryable) while the job is queued/processing; 410 result_expired or job_canceled once the result can no longer be served; 404 for unknown or non-owned jobs.
       responses:
         "200":
           description: Image bytes
