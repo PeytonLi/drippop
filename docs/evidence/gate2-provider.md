@@ -77,6 +77,18 @@ The smoke tool prints only outcomes, safe codes, durations, and downloaded
 byte count. Never put keys, task IDs, presigned URLs, or private image data in
 the evidence report.
 
+## Live Gemini detection (2026-10-11)
+
+- The adapter's original `responseJsonSchema` was rejected live with
+  `400 INVALID_ARGUMENT`: the API refuses list `maxItems` combined with the
+  4-item `box_2d` bounds. `maxItems` was removed from the `persons`/`garments`
+  arrays; caps are enforced post-parse (unchanged `len(...) > 8` checks).
+- After the fix, `gemini-3.1-flash-lite` returned 1 person with a `full_body`
+  garment on a public-domain test photo (not committed).
+- `gemini-3.8-flash` was timing out or overloaded during testing (503
+  "high demand" was also seen).
+- This is detection evidence only; Gate 2 (YouCam generation) remains pending.
+
 ## References
 
 - [PRD Gate 2 — Provider proof](../PRD.md#gate-2--provider-proof), accessed

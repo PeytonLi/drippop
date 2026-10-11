@@ -53,10 +53,11 @@ migrated with the CLI (`db push` / `supabase db start` locally).
 - `PROVIDER_MODE=fake` (default): in-process fake providers; results are
   JPEGs watermarked "FAKE PREVIEW". Categories from
   `categories.json.fake_mode_enabled` (upper_body, full_body) are accepted.
-- `PROVIDER_MODE=live`: no live adapters exist yet — detect → 503
-  `analysis_unavailable`, job creation → 503 `service_unavailable` unless
-  tests inject providers. Live mode additionally requires
-  `DAILY_PAID_ATTEMPT_CAP > 0` (cap 0 fails closed).
+- `PROVIDER_MODE=live`: real adapters. Detect works with `GEMINI_API_KEY`
+  set (without it → 503 `analysis_unavailable`). Job creation still needs
+  a category enabled in `categories.json` — `enabled` stays empty until
+  Gate 2, so generation fails closed — plus `DAILY_PAID_ATTEMPT_CAP > 0`
+  and `YOUCAM_API_KEY` (missing key → 503 `service_unavailable`).
 
 ## Env vars
 
@@ -69,6 +70,9 @@ migrated with the CLI (`db push` / `supabase db start` locally).
 | SUPABASE_JWT_ISSUER | `${SUPABASE_URL}/auth/v1` | |
 | SUPABASE_JWT_AUDIENCE | authenticated | |
 | SUPABASE_SECRET_KEY | "" | `sb_secret_…`; sent on `apikey` header only |
+| GEMINI_API_KEY | "" | live detect; empty → detect returns 503 |
+| GEMINI_MODEL | adapter default | optional override of the Gemini model ID |
+| YOUCAM_API_KEY | "" | live generation; empty → jobs return 503 |
 | STORAGE_BACKEND | derived | local when fake mode & no secret key |
 | LOCAL_STORAGE_DIR | backend/.local-storage | |
 | STORAGE_BUCKET | drippop-private | |

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     supabase_jwt_issuer: str = ""
     supabase_jwt_audience: str = "authenticated"
     supabase_secret_key: str = ""
+    gemini_api_key: str = ""
+    gemini_model: str | None = None
+    youcam_api_key: str = ""
     storage_backend: Literal["supabase", "local"] | None = None
     local_storage_dir: Path = _BACKEND_DIR / ".local-storage"
     storage_bucket: str = "drippop-private"

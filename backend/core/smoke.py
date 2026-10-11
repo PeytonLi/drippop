@@ -69,10 +69,11 @@ async def check_db(settings: Settings) -> None:
                 brow = await cur.fetchone()
             except Exception:
                 brow = None
+            bucket_ok = brow is not None and brow[0] is False
             _report(
                 "db.bucket",
-                brow is not None and brow[0] is False,
-                "bucket missing or storage schema absent",
+                bucket_ok,
+                "private" if bucket_ok else "bucket missing or storage schema absent",
             )
     except Exception as exc:
         _report("db.connect", False, exc.__class__.__name__)
