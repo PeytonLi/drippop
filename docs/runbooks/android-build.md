@@ -67,8 +67,9 @@ D-002 pins plus KTX style hints).
 
 ## Maven Central HTTP 429 workaround
 
-Some cloud VMs get `429 Too Many Requests` from `repo.maven.apache.org` (seen on 2026-10-11). Gradle's own
-retries are not enough. Use Google's Maven Central mirror via a **user-level** init script (never commit it):
+Some cloud VMs get `429 Too Many Requests` from `repo.maven.apache.org` (seen on 2026-10-11; GitHub runners too).
+The mirror now lives in `android/settings.gradle.kts` itself, so the user-level init script below is optional —
+keep it only for machines that still hit 429s (e.g. Robolectric's own downloads):
 
 ```bash
 mkdir -p ~/.gradle/init.d
