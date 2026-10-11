@@ -11,6 +11,7 @@ from core.logging import configure_logging, log
 from core.settings import Settings
 from core.storage import LocalObjectStore, SupabaseObjectStore
 from providers.fake import FakeDetectionProvider, FakeGenerationProvider
+from providers.live import aclose_providers, build_live_providers
 
 
 def build_deps(settings: Settings) -> WorkerDeps:
@@ -26,8 +27,7 @@ def build_deps(settings: Settings) -> WorkerDeps:
         detector: Any = FakeDetectionProvider()
         generator: Any = FakeGenerationProvider()
     else:
-        detector = None
-        generator = None
+        detector, generator = build_live_providers(settings)
     return WorkerDeps(
         settings=settings,
         pool=pool,
@@ -98,6 +98,7 @@ def main() -> int:
                 log("reconcile_complete", **counts)
         finally:
             await deps.pool.close()
+            await aclose_providers(deps.detector, deps.generator)
 
     asyncio.run(_main())
     return 0

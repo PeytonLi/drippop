@@ -37,6 +37,7 @@ from core.state import public_error_code
 from core.storage import LocalObjectStore, SupabaseObjectStore
 from providers.base import PreparedImage
 from providers.fake import FakeDetectionProvider, FakeGenerationProvider
+from providers.live import aclose_providers, build_live_providers
 
 _JOB_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,64}$")
 _IDEM_KEY_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
@@ -106,8 +107,7 @@ def create_app(deps: AppDeps | None = None) -> FastAPI:
             detector: Any = FakeDetectionProvider()
             generator: Any = FakeGenerationProvider()
         else:
-            detector = None
-            generator = None
+            detector, generator = build_live_providers(settings)
         deps = AppDeps(
             settings=settings,
             pool=pool,
@@ -126,6 +126,7 @@ def create_app(deps: AppDeps | None = None) -> FastAPI:
         yield
         if getattr(deps, "pool_needs_open", False):
             await deps.pool.close()
+            await aclose_providers(deps.detector, deps.generator)
 
     app = FastAPI(
         title="DripPop API",
