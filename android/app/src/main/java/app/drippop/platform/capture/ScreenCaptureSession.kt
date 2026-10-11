@@ -17,6 +17,7 @@ import app.drippop.contract.CaptureSession
 import app.drippop.contract.CaptureSessionState
 import app.drippop.contract.CapturedFrame
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +55,12 @@ class ScreenCaptureSession(
     private val captureMutex = Mutex()
 
     private var reader: ImageReader? = null
+
+    // Capture-thread confined. The newest frame is held open so a static screen still yields a frame
+    // composed after our windows were hidden (the compositor sends no further frames until content changes).
+    private var latest: Image? = null
+    private var waiter: CancellableContinuation<Bitmap?>? = null
+    private var waiterThresholdNs = 0L
     private var virtualDisplay: VirtualDisplay? = null
     private val _sourceVisible = MutableStateFlow(true)
     val sourceVisible: StateFlow<Boolean> = _sourceVisible.asStateFlow()
@@ -85,6 +92,7 @@ class ScreenCaptureSession(
         // Android 14+: register the callback before createVirtualDisplay or it throws.
         projection.registerCallback(callback, handler)
         val r = newReader(bounds.width(), bounds.height())
+        r.setOnImageAvailableListener(::onImageAvailable, handler)
         reader = r
         virtualDisplay = projection.createVirtualDisplay(
             "DripPopCapture", bounds.width(), bounds.height(), dpi,
@@ -100,11 +108,12 @@ class ScreenCaptureSession(
         }
         if (!_sourceVisible.value) return CaptureResult.Unavailable(CaptureResult.Reason.SOURCE_NOT_VISIBLE)
 
+        val hiddenAtNs = System.nanoTime()
         withContext(Dispatchers.Main) { setWindowsHidden(true) }
         try {
             delay(HIDE_SETTLE_MS) // let the compositor drop our windows before accepting a frame
             val bitmap = withContext(captureDispatcher) {
-                withTimeoutOrNull(FRESH_FRAME_TIMEOUT_MS) { awaitFreshFrame() }
+                heldFrameAfter(hiddenAtNs) ?: withTimeoutOrNull(FRESH_FRAME_TIMEOUT_MS) { awaitFreshFrame() }
             } ?: return if (stopped) {
                 CaptureResult.Unavailable(CaptureResult.Reason.STOPPED)
             } else {
@@ -132,26 +141,33 @@ class ScreenCaptureSession(
         }
     }
 
-    /**
-     * Runs on the capture thread: discards every buffered image, forces the display to recomposite into
-     * the reader, and returns the first image produced after that point.
-     */
+    /** Capture thread: keeps only the newest frame; older buffered frames are closed (discarded). */
+    private fun onImageAvailable(ir: ImageReader) {
+        if (ir !== reader) return
+        val image = try { ir.acquireLatestImage() } catch (_: IllegalStateException) { null } ?: return
+        latest?.close()
+        latest = image
+        val cont = waiter ?: return
+        if (!FrameFreshness.awaitedFrameAccepted(image.timestamp, waiterThresholdNs, System.nanoTime())) return
+        waiter = null
+        if (cont.isActive) cont.resume(toBitmap(image))
+    }
+
+    /** Capture thread: the held frame, if it was composed after DripPop windows were hidden. */
+    private fun heldFrameAfter(hiddenAtNs: Long): Bitmap? {
+        val image = latest ?: return null
+        if (!FrameFreshness.heldFrameUsable(image.timestamp, hiddenAtNs, System.nanoTime())) return null
+        return toBitmap(image)
+    }
+
+    /** Capture thread: waits for the first frame delivered after this call. */
     private suspend fun awaitFreshFrame(): Bitmap? {
         val r = reader ?: return null
-        drain(r)
-        val threshold = System.nanoTime()
         return suspendCancellableCoroutine { cont ->
-            r.setOnImageAvailableListener({ ir ->
-                val image = try { ir.acquireLatestImage() } catch (_: IllegalStateException) { null }
-                    ?: return@setOnImageAvailableListener
-                image.use {
-                    if (!isFresh(it.timestamp, threshold)) return@setOnImageAvailableListener
-                    ir.setOnImageAvailableListener(null, null)
-                    if (cont.isActive) cont.resume(toBitmap(it))
-                }
-            }, handler)
-            cont.invokeOnCancellation { handler.post { reader?.setOnImageAvailableListener(null, null) } }
-            // Re-attaching the surface makes the virtual display deliver a new frame even if the
+            waiterThresholdNs = System.nanoTime()
+            waiter = cont
+            cont.invokeOnCancellation { handler.post { if (waiter === cont) waiter = null } }
+            // Re-attaching the surface asks the virtual display to deliver a new frame even if the
             // captured content is static.
             virtualDisplay?.let { vd ->
                 vd.surface = null
@@ -160,24 +176,14 @@ class ScreenCaptureSession(
         }
     }
 
-    private fun isFresh(timestampNs: Long, thresholdNs: Long): Boolean {
-        // VirtualDisplay buffers use the monotonic clock; ignore implausible timestamps instead of hanging.
-        val plausible = timestampNs > 0 && kotlin.math.abs(System.nanoTime() - timestampNs) < 10_000_000_000L
-        return !plausible || timestampNs >= thresholdNs
-    }
-
-    private fun drain(r: ImageReader) {
-        while (true) {
-            val img = try { r.acquireNextImage() } catch (_: IllegalStateException) { null } ?: return
-            img.close()
-        }
-    }
-
     private fun resize(width: Int, height: Int) {
         if (stopped || width <= 0 || height <= 0) return
         val vd = virtualDisplay ?: return
         val old = reader
         val r = newReader(width, height)
+        r.setOnImageAvailableListener(::onImageAvailable, handler)
+        latest?.close()
+        latest = null
         vd.resize(width, height, appContext.resources.configuration.densityDpi)
         vd.surface = r.surface
         reader = r
@@ -221,6 +227,10 @@ class ScreenCaptureSession(
         stopped = true
         virtualDisplay?.release()
         virtualDisplay = null
+        waiter?.let { if (it.isActive) it.resume(null) }
+        waiter = null
+        latest?.close()
+        latest = null
         reader?.setOnImageAvailableListener(null, null)
         reader?.close()
         reader = null
