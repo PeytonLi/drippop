@@ -79,7 +79,7 @@ class CaptureService : LifecycleService() {
         )
         this.overlay = overlay
         this.session = session
-        harness = DevTryOnHarness(this, lifecycleScope, session, overlay, graph.api, graph.photoStore) { stopSession() }
+        harness = DevTryOnHarness(this, lifecycleScope, session, overlay, graph.api, graph.photoStore, graph.isFakeApi) { stopSession() }
             .also { overlay.attachHarness(it) }
         session.start()
         ContextCompat.registerReceiver(this, screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)

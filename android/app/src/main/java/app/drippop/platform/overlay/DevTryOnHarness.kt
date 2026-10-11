@@ -13,6 +13,7 @@ import app.drippop.platform.geometry.DefaultCoordinateMapper
 import app.drippop.platform.onboarding.PersonalPhotoStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,8 +37,8 @@ sealed interface HarnessState {
 }
 
 /**
- * Stage 1 placeholder flow (platform-owned dev harness, replaced by lane 2B's UI): capture → fake detect →
- * select → fake job → FAKE PREVIEW. Late responses for an older frame or attempt are dropped.
+ * Dev harness flow (platform-owned, replaced by lane 2B's UI): capture → detect →
+ * select → job → preview. Late responses for an older frame or attempt are dropped.
  */
 class DevTryOnHarness(
     private val context: Context,
@@ -46,11 +47,13 @@ class DevTryOnHarness(
     private val overlay: OverlayController,
     private val api: DripPopApi,
     private val photoStore: PersonalPhotoStore,
+    val isFakeApi: Boolean,
     val onStopRequested: () -> Unit,
 ) {
     private val _state = MutableStateFlow<HarnessState>(HarnessState.Idle)
     val state: StateFlow<HarnessState> = _state.asStateFlow()
     private var currentFrameId: String? = null
+    private var currentJobId: String? = null
     private var attemptId: String? = null
     private var work: Job? = null
     private var hiddenFrom: HarnessState? = null
@@ -66,6 +69,9 @@ class DevTryOnHarness(
     fun captureNew() {
         work?.cancel()
         attemptId = null
+        // The server allows one active job and inputs are private: abandon the old job server-side.
+        currentJobId?.let { id -> scope.launch(NonCancellable) { api.deleteJob(id) } }
+        currentJobId = null
         _state.value = HarnessState.Capturing
         work = scope.launch {
             when (val r = session.captureLatestFrame()) {
@@ -100,30 +106,61 @@ class DevTryOnHarness(
         val choice = s.selected ?: return
         val attempt = UUID.randomUUID().toString()
         attemptId = attempt
-        val key = "fake-" + UUID.randomUUID().toString().replace("-", "")
+        val key = "try-" + UUID.randomUUID().toString().replace("-", "")
         _state.value = HarnessState.Generating(s.frame, s.bitmap, "preparing")
         work = scope.launch {
             val mapper = DefaultCoordinateMapper(s.frame.width, s.frame.height)
             val reference = mapper.cropUpright(s.frame, choice.personBox)
             val person = photoStore.loadFrame() ?: reference
             fun stillCurrent() = attemptId == attempt && currentFrameId == s.frame.frameId
-            val created = api.createJob(key, person, reference, choice.category)
-            if (!stillCurrent()) return@launch
-            val jobId = (created as? ApiResult.Ok)?.let { JSONObject(it.value).getString("job_id") }
-                ?: return@launch fail("Fake job was not created: $created")
-            while (true) {
-                delay(POLL_MS)
-                val job = api.getJob(jobId)
+            // An Uncertain create may or may not have arrived: retry the SAME key/bytes, never a new key.
+            var created = api.createJob(key, person, reference, choice.category)
+            for (backoffMs in CREATE_RETRY_BACKOFFS_MS) {
+                if (created !is ApiResult.Uncertain) break
+                delay(backoffMs)
                 if (!stillCurrent()) return@launch
-                val json = (job as? ApiResult.Ok)?.let { JSONObject(it.value) } ?: return@launch fail("Fake status failed: $job")
-                when (json.getString("status")) {
-                    "succeeded" -> break
-                    "failed", "canceled" -> return@launch fail("Fake job ${json.getString("status")}")
-                    else -> _state.value = HarnessState.Generating(s.frame, s.bitmap, json.getString("phase"))
+                created = api.createJob(key, person, reference, choice.category)
+            }
+            if (!stillCurrent()) return@launch
+            val jobId = when (created) {
+                is ApiResult.Ok -> runCatching { JSONObject(created.value).getString("job_id") }.getOrNull()
+                    ?: return@launch fail("Couldn't start the preview: unexpected response.")
+                is ApiResult.Error -> return@launch fail("Couldn't start the preview", created)
+                ApiResult.Uncertain -> return@launch fail("Couldn't reach the service. Check the connection and try again.")
+            }
+            currentJobId = jobId
+
+            val deadlineMs = System.currentTimeMillis() + GENERATE_DEADLINE_MS
+            while (System.currentTimeMillis() < deadlineMs) {
+                var pollMs = POLL_MS
+                var done = false
+                when (val job = api.getJob(jobId)) {
+                    is ApiResult.Ok -> {
+                        val json = runCatching { JSONObject(job.value) }.getOrNull()
+                            ?: return@launch fail("Couldn't read the job status: unexpected response.")
+                        pollMs = json.optLong("poll_after_ms", POLL_MS).takeIf { it > 0 } ?: POLL_MS
+                        when (val status = json.optString("status")) {
+                            "succeeded" -> done = true
+                            "failed", "canceled" -> {
+                                val errorCode = json.optJSONObject("error")?.optString("code")?.takeIf { it.isNotEmpty() } ?: "unknown"
+                                return@launch fail("The preview $status ($errorCode).")
+                            }
+                            else -> _state.value = HarnessState.Generating(s.frame, s.bitmap, json.optString("phase", "working"))
+                        }
+                    }
+                    is ApiResult.Error -> if (!job.retryable) return@launch fail("Couldn't read the job status", job)
+                    ApiResult.Uncertain -> Unit
                 }
+                if (done) break
+                delay(pollMs)
+                if (!stillCurrent()) return@launch
+            }
+            if (System.currentTimeMillis() >= deadlineMs) {
+                return@launch fail("The preview took too long. Try again.")
             }
             _state.value = HarnessState.Generating(s.frame, s.bitmap, "finalizing")
-            val bytes = (api.getResult(jobId) as? ApiResult.Ok)?.value ?: return@launch fail("Fake result unavailable")
+            val bytes = awaitResult(jobId, deadlineMs) { stillCurrent() }
+                ?: return@launch
             if (!stillCurrent()) return@launch
             _state.value = HarnessState.Ready(
                 reference = BitmapFactory.decodeByteArray(reference.bytes, 0, reference.bytes.size),
@@ -132,10 +169,33 @@ class DevTryOnHarness(
         }
     }
 
+    /** getResult with retry: 409 result_not_ready, retryable errors and Uncertain keep polling until the deadline. */
+    private suspend fun awaitResult(jobId: String, deadlineMs: Long, stillCurrent: () -> Boolean): ByteArray? {
+        while (System.currentTimeMillis() < deadlineMs) {
+            when (val result = api.getResult(jobId)) {
+                is ApiResult.Ok -> return result.value
+                is ApiResult.Error -> {
+                    val notReady = result.httpStatus == 409 && result.code == "result_not_ready"
+                    if (!notReady && !result.retryable) {
+                        fail("The preview isn't available", result)
+                        return null
+                    }
+                }
+                ApiResult.Uncertain -> Unit
+            }
+            if (!stillCurrent()) return null
+            delay(POLL_MS)
+        }
+        fail("The preview took too long. Try again.")
+        return null
+    }
+
     fun reset() {
         work?.cancel()
         currentFrameId = null
         attemptId = null
+        currentJobId?.let { id -> scope.launch(NonCancellable) { api.deleteJob(id) } }
+        currentJobId = null
         _state.value = HarnessState.Idle
     }
 
@@ -157,8 +217,13 @@ class DevTryOnHarness(
         work?.cancel()
     }
 
-    private fun fail(message: String) {
-        _state.value = HarnessState.Error(message)
+    private fun fail(message: String, error: ApiResult.Error? = null) {
+        val suffix = when {
+            error?.code != null -> " (${error.code})"
+            error != null && error.httpStatus > 0 -> " (HTTP ${error.httpStatus})"
+            else -> ""
+        }
+        _state.value = HarnessState.Error(message + suffix)
     }
 
     private fun explain(reason: CaptureResult.Reason): String = when (reason) {
@@ -171,6 +236,8 @@ class DevTryOnHarness(
 
     companion object {
         private const val POLL_MS = 900L
+        private const val GENERATE_DEADLINE_MS = 180_000L
+        private val CREATE_RETRY_BACKOFFS_MS = longArrayOf(2_000L, 5_000L)
         private val CATEGORIES = setOf("upper_body", "full_body")
 
         /** Validates boxes/ids/categories; anything malformed is dropped (manual selection stays available). */
