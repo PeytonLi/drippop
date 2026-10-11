@@ -1,0 +1,73 @@
+name: backend
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "supabase/**"
+      - "contracts/**"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "supabase/**"
+      - "contracts/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.0"
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: uv run ruff check .
+        working-directory: backend
+      - run: uv run ruff format --check .
+        working-directory: backend
+      - run: uv run mypy
+        working-directory: backend
+      - run: uv run pytest -q
+        working-directory: backend
+        env:
+          PGUSER: postgres
+          TEST_DATABASE_URL: postgresql://127.0.0.1:5432/postgres
+      - run: uv run pytest ../contracts/tests -q
+        working-directory: backend
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t drippop-backend .
+
+  supabase-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.120.0
+      - run: supabase db start
+      - run: >-
+          docker exec -i supabase_db_drippop psql -U postgres
+          -v ON_ERROR_STOP=1 < supabase/tests/verify.sql
