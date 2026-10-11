@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drippop.dev/contracts/schemas/garment_category.schema.json",
+  "title": "GarmentCategory",
+  "type": "string",
+  "enum": [
+    "upper_body",
+    "full_body",
+    "lower_body",
+    "shoes",
+    "outer",
+    "auto"
+  ],
+  "description": "YouCam Clothes V4 vocabulary. Only categories enabled in contracts/config/categories.json may be exposed to users or accepted by POST /v1/jobs."
+}

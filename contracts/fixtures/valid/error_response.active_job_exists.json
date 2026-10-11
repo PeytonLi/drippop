@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "active_job_exists",
+    "message": "You already have a preview in progress.",
+    "retryable": false
+  },
+  "job_id": "job_7Qm2xK9pL4vN8rT1"
+}

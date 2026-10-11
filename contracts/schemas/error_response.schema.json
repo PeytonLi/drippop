@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drippop.dev/contracts/schemas/error_response.schema.json",
+  "title": "ErrorResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "$ref": "error.schema.json"
+    },
+    "job_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "image_width": 1080,
+  "image_height": 1350,
+  "coordinate_space": "normalized_upright_xyxy",
+  "persons": [
+    {
+      "id": "p1",
+      "box": [
+        0.02,
+        0.1,
+        0.48,
+        0.98
+      ],
+      "garments": [
+        {
+          "id": "g1",
+          "category": "upper_body",
+          "box": [
+            0.08,
+            0.3,
+            0.44,
+            0.58
+          ]
+        },
+        {
+          "id": "g2",
+          "category": "lower_body",
+          "box": [
+            0.1,
+            0.56,
+            0.42,
+            0.9
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "box": [
+        0.52,
+        0.08,
+        0.97,
+        0.99
+      ],
+      "garments": [
+        {
+          "id": "g3",
+          "category": "full_body",
+          "box": [
+            0.56,
+            0.25,
+            0.93,
+            0.95
+          ]
+        }
+      ]
+    }
+  ],
+  "manual_selection_required": false
+}

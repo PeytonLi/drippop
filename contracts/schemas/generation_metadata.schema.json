@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drippop.dev/contracts/schemas/generation_metadata.schema.json",
+  "title": "GenerationMetadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "garment_category"
+  ],
+  "properties": {
+    "garment_category": {
+      "$ref": "garment_category.schema.json"
+    }
+  }
+}

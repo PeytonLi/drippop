@@ -1,0 +1,153 @@
+openapi: 3.1.0
+info:
+  title: DripPop public API
+  version: 1.0.0
+  description: |
+    Frozen Stage 1 contract (see docs/decisions.md). Changing a path, schema, status,
+    phase or error code requires the coordinator's approval and a coordinated consumer update.
+
+    Every endpoint requires `Authorization: Bearer <Supabase access token>` (anonymous
+    sign-in is fine). owner_uid is the verified JWT `sub`; it is never accepted from
+    request data. Another user's job is indistinguishable from a missing job (404).
+servers:
+  - url: http://localhost:8000
+    description: Local development
+security:
+  - supabaseBearer: []
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe (unauthenticated)
+      security: []
+      responses:
+        "200": {description: OK}
+  /v1/garments:detect:
+    post:
+      summary: Synchronously analyze one explicitly captured frame
+      description: |
+        Bytes are processed in memory; no analysis history is stored. Gemini failure,
+        timeout or invalid output yields 200 with an empty persons array and
+        manual_selection_required=true only when the image itself was valid; an
+        unavailable analysis budget/provider may instead return 503 analysis_unavailable.
+        The client must keep manual selection usable in every case.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [frame]
+              properties:
+                frame: {type: string, format: binary, description: JPEG or PNG}
+      responses:
+        "200":
+          description: Validated detection
+          content:
+            application/json:
+              schema: {$ref: "./schemas/detection_response.schema.json"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "413": {$ref: "#/components/responses/Error"}
+        "422": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+  /v1/jobs:
+    post:
+      summary: Create (or recover) a generation job
+      description: |
+        Same UID + Idempotency-Key + identical request fingerprint returns the same job
+        (202), even when the user is at quota or has an active job. Same key with
+        different inputs returns 409 idempotency_conflict. A new key while another job is
+        active returns 409 active_job_exists. 202 is returned only after the job row and
+        its initial dispatch are committed.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: {type: string, pattern: "^[A-Za-z0-9_-]{16,128}$"}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [person_photo, reference_photo, metadata]
+              properties:
+                person_photo: {type: string, format: binary}
+                reference_photo: {type: string, format: binary}
+                metadata:
+                  type: string
+                  contentMediaType: application/json
+                  description: JSON-encoded GenerationMetadata
+            encoding:
+              metadata: {contentType: application/json}
+      responses:
+        "202":
+          description: Accepted (new or recovered job)
+          content:
+            application/json:
+              schema: {$ref: "./schemas/job_response.schema.json"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "413": {$ref: "#/components/responses/Error"}
+        "422": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+  /v1/jobs/{job_id}:
+    parameters:
+      - {name: job_id, in: path, required: true, schema: {type: string, pattern: "^[A-Za-z0-9_-]{16,64}$"}}
+    get:
+      summary: Owner's job status
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema: {$ref: "./schemas/job_response.schema.json"}
+        "401": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+    delete:
+      summary: Cancel and delete (idempotent)
+      description: |
+        Tombstones the job and blocks image access in the same commit, then enqueues
+        object cleanup. Repeated calls return 202. Does not promise upstream provider
+        cancellation or refund.
+      responses:
+        "202":
+          description: Tombstone committed
+          content:
+            application/json:
+              schema: {$ref: "./schemas/job_response.schema.json"}
+        "401": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+  /v1/jobs/{job_id}/result:
+    parameters:
+      - {name: job_id, in: path, required: true, schema: {type: string, pattern: "^[A-Za-z0-9_-]{16,64}$"}}
+    get:
+      summary: Stream the generated image
+      description: Only for succeeded, unexpired, undeleted jobs owned by the caller.
+      responses:
+        "200":
+          description: Image bytes
+          headers:
+            Cache-Control: {schema: {type: string, const: no-store}}
+          content:
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+        "401": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "410": {$ref: "#/components/responses/Error"}
+components:
+  securitySchemes:
+    supabaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Error:
+      description: Structured safe error
+      content:
+        application/json:
+          schema: {$ref: "./schemas/error_response.schema.json"}

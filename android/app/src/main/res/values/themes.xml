@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.DripPop" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.DripPop.Transparent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+</resources>
