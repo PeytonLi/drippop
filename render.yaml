@@ -1,0 +1,64 @@
+# Render Blueprint: public FastAPI web service + durable background worker,
+# both built from backend/Dockerfile. Supabase provides Auth, Storage and Postgres.
+# DATABASE_URL must be the Supabase *Session pooler* string
+# (…pooler.supabase.com:5432, user postgres.<ref>); the direct db.<ref> host is IPv6-only.
+# sync:false values are prompted once at Blueprint creation; add new secrets
+# to existing services manually afterwards.
+
+envVarGroups:
+  - name: drippop-config
+    envVars:
+      - key: PROVIDER_MODE
+        value: live
+      - key: STORAGE_BACKEND
+        value: supabase
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      # Paid YouCam attempts per UTC day across the project (~2 units each).
+      # Generation still fails closed until a category is enabled in
+      # contracts/config/categories.json after Gate 2.
+      - key: DAILY_PAID_ATTEMPT_CAP
+        value: "10"
+
+services:
+  - type: web
+    name: drippop-api
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    envVars:
+      - fromGroup: drippop-config
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: YOUCAM_API_KEY
+        sync: false
+
+  - type: worker
+    name: drippop-worker
+    runtime: docker
+    plan: 0.5c-512mb
+    region: virginia
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: python worker.py run
+    autoDeployTrigger: checksPass
+    envVars:
+      - fromGroup: drippop-config
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: YOUCAM_API_KEY
+        sync: false
