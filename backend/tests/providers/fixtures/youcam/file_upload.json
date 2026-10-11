@@ -1,0 +1,23 @@
+{
+  "_provenance": "constructed from https://docs.perfectcorp.com/_bundle/reference/file.json?download= (accessed 2026-10-11), not recorded from a live call",
+  "status": 200,
+  "data": {
+    "files": [
+      {
+        "content_type": "image/jpg",
+        "file_name": "person.jpg",
+        "file_id": "synthetic-person-file-id",
+        "requests": [
+          {
+            "method": "PUT",
+            "url": "https://yce-us.s3-accelerate.amazonaws.com/synthetic/person",
+            "headers": {
+              "Content-Type": "image/jpg",
+              "Content-Length": "8"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
