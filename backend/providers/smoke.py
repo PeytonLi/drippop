@@ -19,6 +19,7 @@ from backend.providers.base import (
 from backend.providers.gemini import (
     DetectionUnavailable,
     GeminiDetectionProvider,
+    resolve_model,
 )
 from backend.providers.youcam import (
     DownloadError,
@@ -157,14 +158,11 @@ async def _run_youcam(args: argparse.Namespace, key: str) -> int:
         await provider.client.aclose()
 
 
-async def _run_gemini(args: argparse.Namespace, key: str, model: str | None) -> int:
+async def _run_gemini(args: argparse.Namespace, key: str) -> int:
     started = time.perf_counter()
-    provider = (
-        GeminiDetectionProvider(key, model=model)
-        if model
-        else GeminiDetectionProvider(key)
-    )
+    provider: GeminiDetectionProvider | None = None
     try:
+        provider = GeminiDetectionProvider(key, model=resolve_model())
         frame = _read_image(args.frame)
         result = await provider.detect(frame)
         if result["manual_selection_required"]:
@@ -196,7 +194,8 @@ async def _run_gemini(args: argparse.Namespace, key: str, model: str | None) -> 
         )
         return 1
     finally:
-        await provider.client.aclose()
+        if provider is not None:
+            await provider.client.aclose()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -221,7 +220,7 @@ def main(argv: list[str] | None = None) -> int:
         return _refuse("GEMINI_API_KEY is required.")
     if not args.frame:
         return _refuse("--frame is required for Gemini.")
-    return asyncio.run(_run_gemini(args, key, os.environ.get("GEMINI_MODEL")))
+    return asyncio.run(_run_gemini(args, key))
 
 
 if __name__ == "__main__":

@@ -13,9 +13,11 @@ from referencing import Registry, Resource
 from backend.providers.base import PreparedImage
 from backend.providers.gemini import (
     DEFAULT_MODEL,
+    MODEL_ENV_VAR,
     RESPONSE_SCHEMA,
     DetectionUnavailable,
     GeminiDetectionProvider,
+    resolve_model,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -34,6 +36,64 @@ REGISTRY = Registry().with_resources(
 DETECTION_VALIDATOR = Draft202012Validator(
     SCHEMAS["detection_response.schema.json"], registry=REGISTRY
 )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model_value", [None, ""])
+async def test_unset_or_empty_environment_model_uses_default(model_value, monkeypatch):
+    if model_value is None:
+        monkeypatch.delenv(MODEL_ENV_VAR, raising=False)
+    else:
+        monkeypatch.setenv(MODEL_ENV_VAR, model_value)
+
+    assert resolve_model() == DEFAULT_MODEL
+    provider = GeminiDetectionProvider("test")
+    try:
+        assert provider.model == DEFAULT_MODEL
+    finally:
+        await provider.client.aclose()
+
+
+def test_invalid_constructor_model_ids_are_rejected() -> None:
+    for model in ("../x", "a/b", "gemini 3", ""):
+        with pytest.raises(ValueError, match="invalid Gemini model ID"):
+            GeminiDetectionProvider("test", model=model)
+
+
+def test_invalid_environment_model_id_is_rejected(monkeypatch) -> None:
+    monkeypatch.setenv(MODEL_ENV_VAR, "../x")
+    with pytest.raises(ValueError, match="invalid Gemini model ID"):
+        GeminiDetectionProvider("test")
+
+
+@pytest.mark.asyncio
+async def test_constructor_model_takes_precedence_over_environment(monkeypatch) -> None:
+    monkeypatch.setenv(MODEL_ENV_VAR, "gemini-3.1-flash-lite")
+    provider = GeminiDetectionProvider("test", model=DEFAULT_MODEL)
+    try:
+        assert provider.model == DEFAULT_MODEL
+    finally:
+        await provider.client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_environment_model_override_is_used_in_request_path(monkeypatch) -> None:
+    model = "gemini-3.1-flash-lite"
+    monkeypatch.setenv(MODEL_ENV_VAR, model)
+    endpoint = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent"
+    )
+    with respx.mock(assert_all_called=True) as mock:
+        route = mock.post(endpoint).mock(
+            return_value=httpx.Response(200, json=envelope("{}"))
+        )
+        provider = GeminiDetectionProvider("test")
+        try:
+            await provider.detect(FRAME)
+        finally:
+            await provider.client.aclose()
+    assert route.calls[0].request.url.path == f"/v1beta/models/{model}:generateContent"
 
 
 def envelope(text: str) -> dict:

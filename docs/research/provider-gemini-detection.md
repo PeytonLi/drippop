@@ -25,6 +25,32 @@ and one day for free). This adapter uses raw HTTP with `generateContent` to
 avoid SDK auto-retries and avoid the stateful Interactions API default. This is
 an implementation choice based on those documented tradeoffs.
 
+## Model selection and live availability (2026-10-11)
+
+**Documented facts.** The models page lists `gemini-3.8-flash` as Stable
+(September 2026) and supports structured outputs. The image-understanding
+object-detection examples also use `gemini-3.8-flash`. It is therefore the
+newest generally available Flash model in the supplied documentation with
+documented bounding-box and structured-output support, and remains the
+adapter default. `GEMINI_MODEL` can select another model ID; the adapter
+validates it before interpolating it into the REST URL.
+
+**Coordinator report, not verified by this lane (2026-10-11).** A live
+`GET /v1beta/models` using the coordinator's project key reportedly returned
+`gemini-2.5-flash`, `gemini-flash-latest`, `gemini-3-flash-preview`, and
+`gemini-3.1-flash-lite` among the models supporting `generateContent`;
+`gemini-3.8-flash` was not in that reported list. The list may be a subset and
+is not live evidence gathered by this provider lane. Confirm model availability
+with the actual project key before Gate 2.
+
+If `gemini-3.8-flash` is unavailable for that key, set
+`GEMINI_MODEL=gemini-3.1-flash-lite`. Its official page lists it as Stable
+(May 2026) with structured-output support. It is Flash-Lite, not Flash.
+Avoid `gemini-flash-latest` because it is a moving alias rather than a pinned
+model; avoid `gemini-3-flash-preview` because it is a preview; and avoid
+`gemini-2.5-flash` because access is limited to past users and it is not
+intended for new projects.
+
 ## Request and output handling
 
 The provider sends the image as base64 `inlineData` (`mimeType` plus `data`)
@@ -100,6 +126,7 @@ All URLs below were accessed 2026-10-11; the source text snapshots are in
 - [Structured outputs](https://ai.google.dev/gemini-api/docs/structured-output)
 - [Current models](https://ai.google.dev/gemini-api/docs/models)
 - [Gemini 3.8 Flash model](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash)
+- [Gemini 3.1 Flash-Lite model](https://ai.google.dev/gemini-api/docs/models/gemini-3.1-flash-lite)
 - [GenerateContent API](https://ai.google.dev/api/generate-content)
 - [Interactions API](https://ai.google.dev/gemini-api/docs/interactions)
 - [API versions](https://ai.google.dev/gemini-api/docs/api-versions)

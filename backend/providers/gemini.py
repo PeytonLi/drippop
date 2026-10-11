@@ -2,7 +2,10 @@ import base64
 import json
 import logging
 import math
+import os
+import re
 import time
+from collections.abc import Mapping
 from typing import Any, TypeGuard
 
 import httpx
@@ -10,6 +13,8 @@ import httpx
 from backend.providers.base import PreparedImage
 
 DEFAULT_MODEL = "gemini-3.8-flash"
+MODEL_ENV_VAR = "GEMINI_MODEL"
+_MODEL_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.\-]{0,63}$")
 MAX_FRAME_BYTES = 15 * 1024 * 1024
 DEFAULT_TIMEOUT = httpx.Timeout(connect=5.0, read=20.0, write=10.0, pool=5.0)
 PROMPT = (
@@ -69,6 +74,18 @@ GARMENT_CATEGORIES = frozenset(
 logger = logging.getLogger("drippop.providers.gemini")
 
 
+def _validate_model(model: str) -> str:
+    if not _MODEL_ID_PATTERN.fullmatch(model):
+        raise ValueError("invalid Gemini model ID")
+    return model
+
+
+def resolve_model(environ: Mapping[str, str] | None = None) -> str:
+    source = os.environ if environ is None else environ
+    model = source.get(MODEL_ENV_VAR)
+    return _validate_model(model) if model else DEFAULT_MODEL
+
+
 class DetectionUnavailable(Exception):
     def __init__(self, safe_code: str = "analysis_unavailable", retryable: bool = True):
         self.safe_code = safe_code
@@ -81,13 +98,13 @@ class GeminiDetectionProvider:
         self,
         api_key: str,
         *,
-        model: str = DEFAULT_MODEL,
+        model: str | None = None,
         client: httpx.AsyncClient | None = None,
         base_url: str = "https://generativelanguage.googleapis.com",
         timeout: httpx.Timeout = DEFAULT_TIMEOUT,
     ):
         self.api_key = api_key
-        self.model = model
+        self.model = _validate_model(resolve_model() if model is None else model)
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.client = client or httpx.AsyncClient(

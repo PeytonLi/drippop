@@ -43,6 +43,13 @@ must confirm the real upload and result hosts before enabling production use.
 Redirect following is disabled. API credentials are sent only to the YCE API
 host, never to the presigned upload or result host.
 
+**Coordinator report, not verified by this lane (2026-10-11).** The coordinator
+reports that a Bearer API key alone worked, with no secret-key/RSA flow; the
+V4 endpoints were confirmed; and `GET /s2s/v2.0/task/template/cloth` returned
+200 without spending units. These are account-specific report items, not
+evidence independently obtained by this provider lane, and must not be treated
+as a general provider guarantee.
+
 ## Input requirements, categories, and output
 
 **Documented facts.** The image guidance specifies JPEG/PNG below 10 MB,

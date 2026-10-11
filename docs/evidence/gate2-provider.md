@@ -40,6 +40,7 @@ attempt. Do not expand enabled categories based solely on docs or mocks.
 | Limits and concurrency | Verify account/IP rate-limit response, safe serial cadence, and any account-specific concurrency guidance | **PENDING — no credentials yet** |
 | Idempotency/cancel/delete | Record that no such operation was found in the inspected Clothes/File OpenAPI; ask provider/account support before claiming global absence | **PENDING — no credentials yet** |
 | Gemini model/output | Confirm available model, paid account tier, normalized box ordering/range, semantic validity, and manual-selection fallback rate | **PENDING — no credentials yet** |
+| Gemini model availability | Confirm the configured Gemini model appears in `GET /v1beta/models` for the project key and supports `generateContent`; if `gemini-3.8-flash` is absent, set `GEMINI_MODEL=gemini-3.1-flash-lite` and record it | **PENDING — no credentials yet** |
 | Retention/data-use | Record applicable provider retention and account tier/data-use terms; do not send personal frames on Gemini free tier | **PENDING — no credentials yet** |
 
 For visual fidelity, compare only visible source details (color, pattern,
