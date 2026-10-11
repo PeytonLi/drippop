@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">DripPop</string>
+    <string name="tile_label">DripPop try-on</string>
+    <string name="notification_channel_name">Capture session</string>
+    <string name="notification_title">DripPop capture session active</string>
+    <string name="notification_text">Tap Try on to capture one still. Stop ends capture and removes the overlay.</string>
+    <string name="notification_stop">Stop</string>
+    <string name="bubble_label">Try on</string>
+    <string name="bubble_description">Try on. Captures one still of the visible screen. Drag to move.</string>
+</resources>
