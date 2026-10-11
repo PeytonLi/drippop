@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     provider_mode: Literal["fake", "live"] = "fake"
-    database_url: str = "postgresql://127.0.0.1:5432/postgres"
+    database_url: str = "postgresql://postgres@127.0.0.1:5432/postgres"
     supabase_url: str = ""
     supabase_jwks_url: str = ""
     supabase_jwt_issuer: str = ""

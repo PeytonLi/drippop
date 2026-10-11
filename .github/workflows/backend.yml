@@ -50,7 +50,7 @@ jobs:
         working-directory: backend
         env:
           PGUSER: postgres
-          TEST_DATABASE_URL: postgresql://127.0.0.1:5432/postgres
+          TEST_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/postgres
       - run: uv run pytest ../contracts/tests -q
         working-directory: backend
 
@@ -68,6 +68,6 @@ jobs:
         with:
           version: 2.120.0
       - run: supabase db start
-      - run: >-
-          docker exec -i supabase_db_drippop psql -U postgres
-          -v ON_ERROR_STOP=1 < supabase/tests/verify.sql
+      - run: |
+          eval "$(supabase status -o env)"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/verify.sql

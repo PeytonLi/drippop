@@ -14,7 +14,7 @@ curl -LsSf https://astral.sh/uv/0.13.0/install.sh | sh
 uv python install 3.12
 
 # 2. start Postgres (docker) — or `supabase db start` for the full local stack
-docker run -d --name drippop-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17
+docker run -d --name drippop-pg -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 postgres:17
 
 # 3. install deps and apply migrations (local/CI/test path only)
 cd backend
@@ -27,9 +27,7 @@ uv run python -m worker run        # or: drain [--max-steps N] / reconcile
 ```
 
 Tests need a reachable Postgres: `TEST_DATABASE_URL` (default
-`postgresql://127.0.0.1:5432/postgres`). For a password-protected local
-instance like the container above, `export PGUSER=postgres PGPASSWORD=postgres`
-so psycopg/libpq supplies the credentials — never put them in the URL.
+`postgresql://postgres@127.0.0.1:5432/postgres`).
 
 ## Coordinator: live setup and smoke check
 

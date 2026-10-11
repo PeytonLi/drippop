@@ -29,7 +29,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTRACTS_DIR = REPO_ROOT / "contracts"
 MIGRATIONS_DIR = REPO_ROOT / "supabase" / "migrations"
 
-TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://127.0.0.1:5432/postgres")
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql://postgres@127.0.0.1:5432/postgres"
+)
 
 SCHEMAS = {p.name: json.loads(p.read_text()) for p in (CONTRACTS_DIR / "schemas").glob("*.json")}
 

@@ -1,5 +1,5 @@
 -- Verifies the DripPop schema on a Supabase local stack.
--- Run: docker exec -i supabase_db_drippop psql -U postgres -v ON_ERROR_STOP=1 < supabase/tests/verify.sql
+-- Run: eval "$(supabase status -o env)" && psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/verify.sql
 
 do $$
 declare
