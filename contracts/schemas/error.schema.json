@@ -23,6 +23,7 @@
         "generation_status_unknown",
         "generation_timeout",
         "result_expired",
+        "result_not_ready",
         "job_canceled",
         "unauthenticated",
         "not_found",
