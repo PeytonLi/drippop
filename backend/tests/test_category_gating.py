@@ -24,13 +24,13 @@ async def test_fake_mode_rejected(client, auth, cat):
     assert r.json()["error"]["code"] == "category_unavailable"
 
 
-async def test_live_mode_enabled_empty_422(client, auth, deps):
+async def test_live_mode_category_outside_enabled_422(client, auth, deps):
     deps.settings.provider_mode = "live"
     deps.settings.daily_paid_attempt_cap = 10
     r = await client.post(
         "/v1/jobs",
         headers=idem_headers(auth()),
-        **job_form(metadata={"garment_category": "upper_body"}),
+        **job_form(metadata={"garment_category": "lower_body"}),
     )
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "category_unavailable"
