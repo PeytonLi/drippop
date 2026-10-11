@@ -10,14 +10,38 @@ import app.drippop.contract.CaptureSessionState
 import app.drippop.platform.capture.CaptureService
 import app.drippop.platform.capture.ProjectionConsentActivity
 import app.drippop.platform.graph
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Quick Settings tile: starts the consent flow (Android 14+ PendingIntent route) or stops the session. */
 class DripPopTileService : TileService() {
 
+    private val scope = MainScope()
+    private var listening: Job? = null
+
+    // requestListeningState is a no-op while the shade is already open, so follow the state directly.
     override fun onStartListening() {
         super.onStartListening()
+        listening?.cancel()
+        listening = scope.launch { graph.sessionState.collect(::render) }
+    }
+
+    override fun onStopListening() {
+        listening?.cancel()
+        listening = null
+        super.onStopListening()
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
+
+    private fun render(state: CaptureSessionState) {
         val tile = qsTile ?: return
-        val active = graph.sessionState.value == CaptureSessionState.ACTIVE
+        val active = state == CaptureSessionState.ACTIVE
         tile.state = if (active) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.subtitle = if (active) "Session on" else "Off"
         tile.updateTile()
