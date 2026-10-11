@@ -21,6 +21,22 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0-stage1"
+
+        // Live-backend wiring. Values come from -P gradle properties first, then env vars;
+        // no endpoints or keys are committed. LIVE_API is true only when all three are set.
+        fun prop(name: String): String? = providers.gradleProperty(name).orNull?.takeIf { it.isNotEmpty() }
+        fun env(name: String): String? = providers.environmentVariable(name).orNull?.takeIf { it.isNotEmpty() }
+        val apiBaseUrl = prop("drippop.apiBaseUrl") ?: env("DRIPPOP_API_BASE_URL") ?: ""
+        val supabaseUrl = prop("drippop.supabaseUrl") ?: env("SUPABASE_URL") ?: ""
+        val supabasePublishableKey = prop("drippop.supabasePublishableKey") ?: env("SUPABASE_PUBLISHABLE_KEY") ?: ""
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
+        buildConfigField(
+            "boolean",
+            "LIVE_API",
+            (apiBaseUrl.isNotEmpty() && supabaseUrl.isNotEmpty() && supabasePublishableKey.isNotEmpty()).toString(),
+        )
     }
 
     buildTypes {
@@ -36,6 +52,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
@@ -104,7 +121,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    implementation(libs.okhttp)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
+    testImplementation(libs.okhttp.mockwebserver)
 }

@@ -102,7 +102,11 @@ internal fun Panel(harness: DevTryOnHarness) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("DripPop", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("Dev harness · FAKE API", style = MaterialTheme.typography.labelSmall, color = Accent)
+                        Text(
+                            if (harness.isFakeApi) "Dev harness · FAKE API" else "Dev harness",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Accent,
+                        )
                     }
                     OutlinedButton(onClick = harness::collapse, modifier = Modifier.heightIn(min = 48.dp)) { Text("Collapse") }
                     Button(onClick = harness.onStopRequested, modifier = Modifier.padding(start = 8.dp).heightIn(min = 48.dp)) { Text("Stop") }
@@ -125,7 +129,10 @@ private fun PanelBody(state: HarnessState, harness: DevTryOnHarness) {
         }
         is HarnessState.Analyzing -> Column(Modifier.fillMaxSize()) {
             FrameWithBoxes(state.bitmap, state.frame.width, state.frame.height, emptyList(), null, {}, Modifier.weight(1f))
-            Progress("Analyzing (fake detection)…", Modifier.height(56.dp))
+            Progress(
+                if (harness.isFakeApi) "Analyzing (fake detection)…" else "Analyzing…",
+                Modifier.height(56.dp),
+            )
         }
         is HarnessState.Selecting -> Column(Modifier.fillMaxSize()) {
             FrameWithBoxes(state.bitmap, state.frame.width, state.frame.height, state.candidates, state.selected, harness::select, Modifier.weight(1f))
@@ -147,13 +154,18 @@ private fun PanelBody(state: HarnessState, harness: DevTryOnHarness) {
         }
         is HarnessState.Generating -> Column(Modifier.fillMaxSize()) {
             FrameWithBoxes(state.bitmap, state.frame.width, state.frame.height, emptyList(), null, {}, Modifier.weight(1f))
-            Progress("Fake job: ${state.phase}", Modifier.height(56.dp))
+            Progress(
+                (if (harness.isFakeApi) "Fake job: " else "Generating: ") + state.phase,
+                Modifier.height(56.dp),
+            )
         }
         is HarnessState.Ready -> Column(Modifier.fillMaxSize()) {
-            Text("FAKE PREVIEW — fixture flow, not a real try-on", color = Accent, fontWeight = FontWeight.Bold)
+            if (harness.isFakeApi) {
+                Text("FAKE PREVIEW — fixture flow, not a real try-on", color = Accent, fontWeight = FontWeight.Bold)
+            }
             Row(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Labeled("Source", Modifier.weight(1f)) { Image(state.reference.asImageBitmap(), "Source reference crop", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
-                Labeled("Preview", Modifier.weight(1f)) { Image(state.result.asImageBitmap(), "Fake preview result", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
+                Labeled("Preview", Modifier.weight(1f)) { Image(state.result.asImageBitmap(), if (harness.isFakeApi) "Fake preview result" else "Preview result", Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = harness::reset, modifier = Modifier.heightIn(min = 48.dp)) { Text("Discard") }
