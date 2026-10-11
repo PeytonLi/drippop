@@ -6,7 +6,7 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-from backend.providers.base import (
+from providers.base import (
     Category,
     CheckResult,
     Failed,
@@ -81,9 +81,7 @@ class YouCamGenerationProvider:
         self.upload_hosts = frozenset(host.lower() for host in upload_hosts)
         self.timeout = timeout
         self.filter_multi_person = filter_multi_person
-        self.client = client or httpx.AsyncClient(
-            follow_redirects=False, timeout=timeout
-        )
+        self.client = client or httpx.AsyncClient(follow_redirects=False, timeout=timeout)
         self.client.headers.pop("Authorization", None)
 
     def _log(self, stage: str, status: int | None, code: str, started: float) -> None:
@@ -207,9 +205,7 @@ class YouCamGenerationProvider:
         except SubmitRejected:
             raise
         except httpx.TransportError as exc:
-            self._log(
-                "file_upload", upload_status, "service_unavailable", upload_started
-            )
+            self._log("file_upload", upload_status, "service_unavailable", upload_started)
             raise SubmitRejected("service_unavailable", True) from exc
         self._log("file_upload", upload_status, "ok", upload_started)
         self._log("file_create", status, "ok", started)
@@ -221,8 +217,7 @@ class YouCamGenerationProvider:
         if category not in SUPPORTED_CATEGORIES:
             raise SubmitRejected("category_unavailable", False)
         if any(
-            len(image.data) >= MAX_IMAGE_BYTES
-            or max(image.width, image.height) > MAX_IMAGE_SIDE
+            len(image.data) >= MAX_IMAGE_BYTES or max(image.width, image.height) > MAX_IMAGE_SIDE
             for image in (person, reference)
         ):
             raise SubmitRejected("invalid_image", False)
@@ -325,9 +320,7 @@ class YouCamGenerationProvider:
             results = data.get("results")
             output_url = results.get("url") if isinstance(results, dict) else None
             result = (
-                Succeeded(output_url)
-                if isinstance(output_url, str) and output_url
-                else Pending()
+                Succeeded(output_url) if isinstance(output_url, str) and output_url else Pending()
             )
         elif task_status == "error":
             error = data.get("error")
@@ -382,18 +375,14 @@ class YouCamGenerationProvider:
                     except ValueError:
                         too_large = False
                     if too_large:
-                        self._log(
-                            "result_download", status, "provider_rejected", started
-                        )
+                        self._log("result_download", status, "provider_rejected", started)
                         raise DownloadError("provider_rejected", False)
                 chunks: list[bytes] = []
                 total = 0
                 async for chunk in response.aiter_bytes():
                     total += len(chunk)
                     if total > max_bytes:
-                        self._log(
-                            "result_download", status, "provider_rejected", started
-                        )
+                        self._log("result_download", status, "provider_rejected", started)
                         raise DownloadError("provider_rejected", False)
                     chunks.append(chunk)
                 self._log("result_download", status, "ok", started)

@@ -7,7 +7,7 @@ import httpx
 import pytest
 import respx
 
-from backend.providers.base import (
+from providers.base import (
     Failed,
     Pending,
     PreparedImage,
@@ -16,7 +16,7 @@ from backend.providers.base import (
     SubmitRejected,
     Succeeded,
 )
-from backend.providers.youcam import (
+from providers.youcam import (
     DEFAULT_OUTPUT_HOSTS,
     ENGINE_ERROR_CODES,
     DownloadError,
@@ -69,9 +69,9 @@ def register_uploads(mock: respx.MockRouter, *, upload_status: int = 200):
             ),
         ]
     )
-    person_route = mock.put(
-        "https://yce-us.s3-accelerate.amazonaws.com/synthetic/person"
-    ).mock(return_value=httpx.Response(upload_status))
+    person_route = mock.put("https://yce-us.s3-accelerate.amazonaws.com/synthetic/person").mock(
+        return_value=httpx.Response(upload_status)
+    )
     reference_route = mock.put(
         "https://yce-us.s3-accelerate.amazonaws.com/synthetic/reference"
     ).mock(return_value=httpx.Response(upload_status))
@@ -101,8 +101,7 @@ async def test_submit_uploads_both_images_then_submits_task() -> None:
         b'{"files":[{"content_type":"image/png","file_name":"reference.png","file_size":8}]}',
     ]
     assert all(
-        call.request.headers["Authorization"] == "Bearer sentinel-key"
-        for call in file_route.calls
+        call.request.headers["Authorization"] == "Bearer sentinel-key" for call in file_route.calls
     )
     task_call = task.calls[0]
     assert json.loads(task_call.request.content) == {
@@ -133,20 +132,16 @@ async def test_submit_uploads_both_images_then_submits_task() -> None:
         (500, "service_unavailable", True),
     ],
 )
-async def test_file_endpoint_failure_is_definite_rejection(
-    status, safe_code, retryable
-) -> None:
+async def test_file_endpoint_failure_is_definite_rejection(status, safe_code, retryable) -> None:
     with respx.mock(assert_all_called=False) as mock:
-        mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(
-            return_value=httpx.Response(status, json={})
-        )
+        mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(return_value=httpx.Response(status, json={}))
         provider = await make_provider()
         try:
             with pytest.raises(SubmitRejected) as caught:
                 await provider.submit(PERSON, REFERENCE, "upper_body")
         finally:
             await provider.client.aclose()
-    assert caught.value.args == (safe_code, retryable)
+    assert caught.value.args == (safe_code,) and caught.value.retryable == retryable
 
 
 @pytest.mark.asyncio
@@ -163,18 +158,16 @@ async def test_file_stage_transport_and_malformed_success_are_retryable() -> Non
                     await provider.submit(PERSON, REFERENCE, "upper_body")
             finally:
                 await provider.client.aclose()
-        assert caught.value.args == ("service_unavailable", True)
+        assert caught.value.args == ("service_unavailable",) and caught.value.retryable is True
     with respx.mock(assert_all_called=False) as mock:
-        mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(
-            side_effect=httpx.ConnectError("offline")
-        )
+        mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(side_effect=httpx.ConnectError("offline"))
         provider = await make_provider()
         try:
             with pytest.raises(SubmitRejected) as caught:
                 await provider.submit(PERSON, REFERENCE, "upper_body")
         finally:
             await provider.client.aclose()
-    assert caught.value.args == ("service_unavailable", True)
+    assert caught.value.args == ("service_unavailable",) and caught.value.retryable is True
 
 
 @pytest.mark.asyncio
@@ -191,9 +184,7 @@ async def test_presigned_put_transport_failure_is_retryable(error) -> None:
         mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(
             return_value=httpx.Response(
                 200,
-                json=file_response(
-                    "https://yce-us.s3-accelerate.amazonaws.com/synthetic/person"
-                ),
+                json=file_response("https://yce-us.s3-accelerate.amazonaws.com/synthetic/person"),
             )
         )
         mock.put("https://yce-us.s3-accelerate.amazonaws.com/synthetic/person").mock(
@@ -205,7 +196,7 @@ async def test_presigned_put_transport_failure_is_retryable(error) -> None:
                 await provider.submit(PERSON, REFERENCE, "upper_body")
         finally:
             await provider.client.aclose()
-    assert caught.value.args == ("service_unavailable", True)
+    assert caught.value.args == ("service_unavailable",) and caught.value.retryable is True
 
 
 @pytest.mark.asyncio
@@ -219,16 +210,12 @@ async def test_presigned_put_transport_failure_is_retryable(error) -> None:
         (500, "service_unavailable", True),
     ],
 )
-async def test_presigned_put_failure_is_a_definite_rejection(
-    status, safe_code, retryable
-) -> None:
+async def test_presigned_put_failure_is_a_definite_rejection(status, safe_code, retryable) -> None:
     with respx.mock(assert_all_called=False) as mock:
         mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(
             return_value=httpx.Response(
                 200,
-                json=file_response(
-                    "https://yce-us.s3-accelerate.amazonaws.com/synthetic/person"
-                ),
+                json=file_response("https://yce-us.s3-accelerate.amazonaws.com/synthetic/person"),
             )
         )
         mock.put("https://yce-us.s3-accelerate.amazonaws.com/synthetic/person").mock(
@@ -240,7 +227,7 @@ async def test_presigned_put_failure_is_a_definite_rejection(
                 await provider.submit(PERSON, REFERENCE, "upper_body")
         finally:
             await provider.client.aclose()
-    assert caught.value.args == (safe_code, retryable)
+    assert caught.value.args == (safe_code,) and caught.value.retryable == retryable
 
 
 @pytest.mark.asyncio
@@ -255,22 +242,18 @@ async def test_presigned_put_failure_is_a_definite_rejection(
         ),
     ],
 )
-async def test_file_stage_rejects_bad_upload_endpoint(
-    upload_url, method, safe_code
-) -> None:
+async def test_file_stage_rejects_bad_upload_endpoint(upload_url, method, safe_code) -> None:
     response = file_response(upload_url)
     response["data"]["files"][0]["requests"][0]["method"] = method
     with respx.mock(assert_all_called=False) as mock:
-        mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(
-            return_value=httpx.Response(200, json=response)
-        )
+        mock.post(f"{BASE_URL}/s2s/v2.0/file").mock(return_value=httpx.Response(200, json=response))
         provider = await make_provider()
         try:
             with pytest.raises(SubmitRejected) as caught:
                 await provider.submit(PERSON, REFERENCE, "upper_body")
         finally:
             await provider.client.aclose()
-    assert caught.value.args == (safe_code, False)
+    assert caught.value.args == (safe_code,) and caught.value.retryable is False
 
 
 @pytest.mark.asyncio
@@ -324,7 +307,8 @@ async def test_task_transport_error_classification(exception, ambiguous) -> None
         finally:
             await provider.client.aclose()
     if not ambiguous:
-        assert caught.value.args == ("service_unavailable", True)
+        assert isinstance(caught.value, SubmitRejected)
+        assert caught.value.args == ("service_unavailable",) and caught.value.retryable is True
 
 
 @pytest.mark.asyncio
@@ -362,9 +346,7 @@ async def test_task_uncertain_responses_are_ambiguous(response) -> None:
         (422, {}, "provider_rejected", False),
     ],
 )
-async def test_task_definite_rejection_responses(
-    status, payload, safe_code, retryable
-) -> None:
+async def test_task_definite_rejection_responses(status, payload, safe_code, retryable) -> None:
     with respx.mock(assert_all_called=False) as mock:
         register_uploads(mock)
         mock.post(f"{BASE_URL}/s2s/v2.0/task/cloth-v4").mock(
@@ -376,7 +358,7 @@ async def test_task_definite_rejection_responses(
                 await provider.submit(PERSON, REFERENCE, "upper_body")
         finally:
             await provider.client.aclose()
-    assert caught.value.args == (safe_code, retryable)
+    assert caught.value.args == (safe_code,) and caught.value.retryable == retryable
 
 
 @pytest.mark.asyncio
@@ -433,9 +415,7 @@ async def test_check_task_states(payload, expected) -> None:
 )
 async def test_check_error_responses(response, expected) -> None:
     with respx.mock(assert_all_called=False) as mock:
-        mock.get(f"{BASE_URL}/s2s/v2.0/task/cloth-v4/synthetic-task-id").mock(
-            return_value=response
-        )
+        mock.get(f"{BASE_URL}/s2s/v2.0/task/cloth-v4/synthetic-task-id").mock(return_value=response)
         provider = await make_provider()
         try:
             result = await provider.check(TICKET)
@@ -530,17 +510,13 @@ async def test_download_rejects_unsafe_urls_without_request(url) -> None:
 async def test_download_ok_and_rejects_redirect_expired_and_oversize() -> None:
     allowed = next(iter(DEFAULT_OUTPUT_HOSTS))
     with respx.mock(assert_all_called=False) as mock:
-        mock.get(f"https://{allowed}/ok").mock(
-            return_value=httpx.Response(200, content=b"image")
-        )
+        mock.get(f"https://{allowed}/ok").mock(return_value=httpx.Response(200, content=b"image"))
         mock.get(f"https://{allowed}/redirect").mock(return_value=httpx.Response(302))
         mock.get(f"https://{allowed}/expired").mock(return_value=httpx.Response(403))
         mock.get(f"https://{allowed}/missing").mock(return_value=httpx.Response(404))
         mock.get(f"https://{allowed}/gone").mock(return_value=httpx.Response(410))
         mock.get(f"https://{allowed}/large").mock(
-            return_value=httpx.Response(
-                200, headers={"Content-Length": "101"}, content=b""
-            )
+            return_value=httpx.Response(200, headers={"Content-Length": "101"}, content=b"")
         )
         provider = await make_provider()
         try:
@@ -588,9 +564,7 @@ async def test_download_stops_chunked_body_at_limit_and_maps_timeout() -> None:
         mock.get(f"https://{allowed}/chunked").mock(
             return_value=httpx.Response(200, stream=ChunkedBody())
         )
-        mock.get(f"https://{allowed}/timeout").mock(
-            side_effect=httpx.ReadTimeout("timeout")
-        )
+        mock.get(f"https://{allowed}/timeout").mock(side_effect=httpx.ReadTimeout("timeout"))
         mock.get(f"https://{allowed}/large-header").mock(
             return_value=httpx.Response(
                 200,
@@ -600,10 +574,10 @@ async def test_download_stops_chunked_body_at_limit_and_maps_timeout() -> None:
         )
         provider = await make_provider()
         try:
-            with pytest.raises(Exception) as caught:
+            with pytest.raises(DownloadError) as caught:
                 await provider.download(f"https://{allowed}/chunked", 5)
             assert caught.value.safe_code == "provider_rejected"
-            with pytest.raises(Exception) as caught:
+            with pytest.raises(DownloadError) as caught:
                 await provider.download(f"https://{allowed}/timeout", 50)
             assert caught.value.safe_code == "service_unavailable"
             assert caught.value.retryable is True
@@ -625,9 +599,7 @@ async def test_logging_never_includes_keys_urls_or_task_ids(caplog) -> None:
         mock.get(f"{BASE_URL}/s2s/v2.0/task/cloth-v4/sentinel-task-id").mock(
             return_value=httpx.Response(200, json=body("task_running.json"))
         )
-        result_route = mock.get(sentinel_url).mock(
-            return_value=httpx.Response(200, content=b"ok")
-        )
+        result_route = mock.get(sentinel_url).mock(return_value=httpx.Response(200, content=b"ok"))
         provider = YouCamGenerationProvider("sentinel-key", client=httpx.AsyncClient())
         try:
             await provider.check(ticket)

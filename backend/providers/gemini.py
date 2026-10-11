@@ -10,7 +10,7 @@ from typing import Any, TypeGuard
 
 import httpx
 
-from backend.providers.base import PreparedImage
+from providers.base import PreparedImage
 
 DEFAULT_MODEL = "gemini-3.8-flash"
 MODEL_ENV_VAR = "GEMINI_MODEL"
@@ -68,9 +68,7 @@ RESPONSE_SCHEMA = {
     },
     "required": ["persons"],
 }
-GARMENT_CATEGORIES = frozenset(
-    {"upper_body", "full_body", "lower_body", "shoes", "outer"}
-)
+GARMENT_CATEGORIES = frozenset({"upper_body", "full_body", "lower_body", "shoes", "outer"})
 logger = logging.getLogger("drippop.providers.gemini")
 
 
@@ -107,9 +105,7 @@ class GeminiDetectionProvider:
         self.model = _validate_model(resolve_model() if model is None else model)
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.client = client or httpx.AsyncClient(
-            follow_redirects=False, timeout=timeout
-        )
+        self.client = client or httpx.AsyncClient(follow_redirects=False, timeout=timeout)
         self.client.headers.pop("Authorization", None)
 
     def _log(
@@ -287,10 +283,7 @@ class GeminiDetectionProvider:
         usage = usage if isinstance(usage, dict) else None
 
         prompt_feedback = envelope.get("promptFeedback")
-        if (
-            isinstance(prompt_feedback, dict)
-            and prompt_feedback.get("blockReason") is not None
-        ):
+        if isinstance(prompt_feedback, dict) and prompt_feedback.get("blockReason") is not None:
             self._log(status, "manual_selection_required", started, usage)
             return self._manual(frame)
         candidates = envelope.get("candidates")
@@ -321,8 +314,6 @@ class GeminiDetectionProvider:
             self._log(status, "manual_selection_required", started, usage)
             return self._manual(frame)
         output = self._parse_model_text(text, frame)
-        outcome = (
-            "manual_selection_required" if output["manual_selection_required"] else "ok"
-        )
+        outcome = "manual_selection_required" if output["manual_selection_required"] else "ok"
         self._log(status, outcome, started, usage)
         return output

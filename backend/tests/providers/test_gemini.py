@@ -10,8 +10,8 @@ import respx
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from backend.providers.base import PreparedImage
-from backend.providers.gemini import (
+from providers.base import PreparedImage
+from providers.gemini import (
     DEFAULT_MODEL,
     MODEL_ENV_VAR,
     RESPONSE_SCHEMA,
@@ -24,10 +24,11 @@ ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = Path(__file__).parent / "fixtures" / "gemini"
 CONTRACTS = ROOT / "contracts"
 FRAME = PreparedImage(b"synthetic-frame", "image/jpeg", 100, 200)
-ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{DEFAULT_MODEL}:generateContent"
+ENDPOINT = (
+    f"https://generativelanguage.googleapis.com/v1beta/models/{DEFAULT_MODEL}:generateContent"
+)
 SCHEMAS = {
-    path.name: json.loads(path.read_text())
-    for path in (CONTRACTS / "schemas").glob("*.json")
+    path.name: json.loads(path.read_text()) for path in (CONTRACTS / "schemas").glob("*.json")
 }
 REGISTRY = Registry().with_resources(
     [(schema["$id"], Resource.from_contents(schema)) for schema in SCHEMAS.values()]
@@ -80,14 +81,9 @@ async def test_constructor_model_takes_precedence_over_environment(monkeypatch) 
 async def test_environment_model_override_is_used_in_request_path(monkeypatch) -> None:
     model = "gemini-3.1-flash-lite"
     monkeypatch.setenv(MODEL_ENV_VAR, model)
-    endpoint = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model}:generateContent"
-    )
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     with respx.mock(assert_all_called=True) as mock:
-        route = mock.post(endpoint).mock(
-            return_value=httpx.Response(200, json=envelope("{}"))
-        )
+        route = mock.post(endpoint).mock(return_value=httpx.Response(200, json=envelope("{}")))
         provider = GeminiDetectionProvider("test")
         try:
             await provider.detect(FRAME)
@@ -113,12 +109,8 @@ def semantic_check(value: dict) -> bool:
     if not persons and not value["manual_selection_required"]:
         return False
     person_ids = [person["id"] for person in persons]
-    garment_ids = [
-        garment["id"] for person in persons for garment in person["garments"]
-    ]
-    if len(person_ids) != len(set(person_ids)) or len(garment_ids) != len(
-        set(garment_ids)
-    ):
+    garment_ids = [garment["id"] for person in persons for garment in person["garments"]]
+    if len(person_ids) != len(set(person_ids)) or len(garment_ids) != len(set(garment_ids)):
         return False
     for box in [person["box"] for person in persons] + [
         garment["box"] for person in persons for garment in person["garments"]
@@ -143,9 +135,7 @@ async def test_happy_path_converts_boxes_and_matches_contract_schema() -> None:
             {
                 "id": "p1",
                 "box": [0.2, 0.1, 0.8, 0.9],
-                "garments": [
-                    {"id": "g1", "category": "upper_body", "box": [0.3, 0.2, 0.7, 0.5]}
-                ],
+                "garments": [{"id": "g1", "category": "upper_body", "box": [0.3, 0.2, 0.7, 0.5]}],
             }
         ],
         "manual_selection_required": False,
@@ -188,9 +178,7 @@ async def test_multiple_people_assign_global_ids_and_ignore_model_metadata() -> 
                     },
                     {
                         "box_2d": [0, 500, 1000, 1000],
-                        "garments": [
-                            {"category": "shoes", "box_2d": [800, 600, 950, 900]}
-                        ],
+                        "garments": [{"category": "shoes", "box_2d": [800, 600, 950, 900]}],
                     },
                 ]
             }
@@ -282,16 +270,8 @@ async def test_any_invalid_model_output_requires_manual_selection(text) -> None:
     [
         {"promptFeedback": {"blockReason": "SAFETY"}},
         {"candidates": []},
-        {
-            "candidates": [
-                {"finishReason": "SAFETY", "content": {"parts": [{"text": "{}"}]}}
-            ]
-        },
-        {
-            "candidates": [
-                {"finishReason": "MAX_TOKENS", "content": {"parts": [{"text": "{}"}]}}
-            ]
-        },
+        {"candidates": [{"finishReason": "SAFETY", "content": {"parts": [{"text": "{}"}]}}]},
+        {"candidates": [{"finishReason": "MAX_TOKENS", "content": {"parts": [{"text": "{}"}]}}]},
         envelope(""),
     ],
 )
@@ -332,9 +312,7 @@ async def test_thought_parts_are_ignored_when_joining_output_text() -> None:
 @pytest.mark.asyncio
 async def test_candidate_without_candidates_list_is_retryable_unavailable() -> None:
     with respx.mock(assert_all_called=True) as mock:
-        mock.post(ENDPOINT).mock(
-            return_value=httpx.Response(200, json={"usageMetadata": {}})
-        )
+        mock.post(ENDPOINT).mock(return_value=httpx.Response(200, json={"usageMetadata": {}}))
         with pytest.raises(DetectionUnavailable) as caught:
             await GeminiDetectionProvider("test").detect(FRAME)
     assert caught.value.safe_code == "analysis_unavailable"
@@ -388,11 +366,9 @@ def test_semantic_checker_rejects_every_contract_semantic_invalid_fixture() -> N
 @pytest.mark.asyncio
 async def test_logging_omits_key_and_model_text(caplog) -> None:
     caplog.set_level(logging.INFO, logger="drippop.providers.gemini")
-    secret_text = "sentinel-private-model-text"
+    secret_text = "sentinel-private-model-text"  # noqa: S105 — fake test sentinel
     with respx.mock(assert_all_called=True) as mock:
-        mock.post(ENDPOINT).mock(
-            return_value=httpx.Response(200, json=envelope(secret_text))
-        )
+        mock.post(ENDPOINT).mock(return_value=httpx.Response(200, json=envelope(secret_text)))
         provider = GeminiDetectionProvider("sentinel-key")
         try:
             result = await provider.detect(FRAME)

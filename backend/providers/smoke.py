@@ -8,7 +8,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Literal
 
-from backend.providers.base import (
+from providers.base import (
     Failed,
     Pending,
     PreparedImage,
@@ -16,12 +16,12 @@ from backend.providers.base import (
     SubmitAmbiguous,
     SubmitRejected,
 )
-from backend.providers.gemini import (
+from providers.gemini import (
     DetectionUnavailable,
     GeminiDetectionProvider,
     resolve_model,
 )
-from backend.providers.youcam import (
+from providers.youcam import (
     DownloadError,
     YouCamGenerationProvider,
 )
@@ -38,9 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--i-accept-cost", action="store_true")
     parser.add_argument("--person")
     parser.add_argument("--reference")
-    parser.add_argument(
-        "--category", choices=("upper_body", "full_body"), default="upper_body"
-    )
+    parser.add_argument("--category", choices=("upper_body", "full_body"), default="upper_body")
     parser.add_argument("--frame")
     parser.add_argument("--deadline-s", type=int, default=180)
     parser.add_argument("--out")
@@ -99,9 +97,7 @@ async def _run_youcam(args: argparse.Namespace, key: str) -> int:
         person = _read_image(args.person)
         reference = _read_image(args.reference)
         try:
-            ticket = await _submit_youcam_once(
-                provider, person, reference, args.category
-            )
+            ticket = await _submit_youcam_once(provider, person, reference, args.category)
         except SubmitRejected as exc:
             print(
                 f"outcome=rejected safe_code={exc.args[0]} "
@@ -109,9 +105,8 @@ async def _run_youcam(args: argparse.Namespace, key: str) -> int:
             )
             return 1
         except SubmitAmbiguous:
-            print(
-                f"outcome=submission_unknown duration_ms={int((time.perf_counter() - started) * 1000)}"
-            )
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            print(f"outcome=submission_unknown duration_ms={duration_ms}")
             return 1
 
         deadline = time.monotonic() + args.deadline_s
@@ -171,9 +166,7 @@ async def _run_gemini(args: argparse.Namespace, key: str) -> int:
                 f"duration_ms={int((time.perf_counter() - started) * 1000)}"
             )
         else:
-            print(
-                f"outcome=succeeded duration_ms={int((time.perf_counter() - started) * 1000)}"
-            )
+            print(f"outcome=succeeded duration_ms={int((time.perf_counter() - started) * 1000)}")
         if args.out:
             destination = Path(args.out)
             if not destination.is_absolute():
