@@ -1,9 +1,9 @@
 # Gate 2 — Provider proof plan
 
-**Status: PENDING — no credentials yet.** No live calls, personal photos,
-provider spend, or real-provider acceptance evidence are included in this
-change. Constructed fixtures and emulators are development evidence only; they
-do not pass Gate 2. The Gate 2 requirements follow the provider-proof section
+**Status: PARTIAL — live Gemini detection and two live YouCam Clothes V4
+trials succeeded (2026-10-11, see below); billing, output-expiry, rate-limit
+and rejection rows remain pending.** Constructed fixtures and emulators are
+development evidence only; they do not pass Gate 2. The Gate 2 requirements follow the provider-proof section
 of `docs/PRD.md` and are split into per-category test rows below.
 
 ## Test inputs and handling
@@ -88,6 +88,36 @@ the evidence report.
 - `gemini-3.8-flash` was timing out or overloaded during testing (503
   "high demand" was also seen).
 - This is detection evidence only; Gate 2 (YouCam generation) remains pending.
+
+## Live YouCam Clothes V4 trials (2026-10-11)
+
+Budget: Peyton delegated the choice; the coordinator capped this trial at 4
+paid attempts (≈8 units) and used 2. Run with `python -m providers.smoke
+--provider youcam` (one submission per run, no automatic retry). Inputs are
+CC0 Wikimedia Commons photos kept under `.local/` and not committed:
+
+- A: `Young_North_Indian_man_with_beard_in_white_t-shirt.jpg` (900×1600,
+  front-facing, framed mid-thigh up, white tee, navy shorts)
+- B: `Man_(subspecies_Wikipedian)_taking_whole_body_selfie_in_mirror_(strong_crop).jpg`
+  (707×2303, full-body mirror selfie, black tee and shorts, barefoot, face
+  partly hidden by a phone)
+
+| # | Category | Person | Reference | Outcome | End-to-end | Output |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `upper_body` | A | B | succeeded | 20.9 s | JPEG, 105,652 B |
+| 2 | `full_body` | B | A | succeeded | 20.8 s | JPEG, 250,830 B |
+
+Observations (visual review by the coordinator):
+
+- Trial 1: the white tee became a plain black crew-neck tee; face, hair, pose,
+  background and shorts were preserved. A reference whose face is partly
+  hidden was still accepted.
+- Trial 2: the white textured tee and dark shorts transferred, and the phone/
+  hand pose was preserved. The provider also added black sneakers that appear
+  in neither input (the person is barefoot; the reference is cropped above the
+  knees), so `full_body` can invent garments outside the reference framing.
+- Not yet measured: unit balance before/after, whether rejected attempts bill,
+  output-URL expiry, rate limits/concurrency.
 
 ## References
 
