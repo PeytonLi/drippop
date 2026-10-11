@@ -1,0 +1,18 @@
+# Local secrets and private trial data
+.env
+.env.*
+!.env.example
+.local/
+secrets/
+credentials*.json
+*service-account*.json
+*.keystore
+*.jks
+*.pem
+*.key
+
+# Local editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
