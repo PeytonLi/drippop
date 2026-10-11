@@ -12,8 +12,8 @@ Prepare a small, repeatable reference set for each category offered:
 
 | Category | Planned reference set | Gate status |
 | --- | --- | --- |
-| `upper_body` | One public or synthetic front-facing upper-body garment reference; one public or synthetic suitable source frame | **PENDING — no credentials yet** |
-| `full_body` | One public or synthetic front-facing full outfit reference; one public or synthetic suitable source frame | **PENDING — no credentials yet** |
+| `upper_body` | One public or synthetic front-facing upper-body garment reference; one public or synthetic suitable source frame | **PARTIAL — one live V4 trial succeeded (see Live YouCam Clothes V4 trials)** |
+| `full_body` | One public or synthetic front-facing full outfit reference; one public or synthetic suitable source frame | **PARTIAL — one live V4 trial succeeded (see Live YouCam Clothes V4 trials)** |
 
 Use only public or synthetic images in this evidence plan. Do not add personal
 photos to the repository. If separately authorized, consented personal images
@@ -87,7 +87,7 @@ the evidence report.
   garment on a public-domain test photo (not committed).
 - `gemini-3.8-flash` was timing out or overloaded during testing (503
   "high demand" was also seen).
-- This is detection evidence only; Gate 2 (YouCam generation) remains pending.
+- This is detection evidence only; see the YouCam trials below for generation.
 
 ## Live YouCam Clothes V4 trials (2026-10-11)
 
