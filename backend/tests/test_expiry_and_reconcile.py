@@ -26,6 +26,16 @@ async def _create(client, h, **kw):
     return r.json()["job_id"]
 
 
+async def test_result_409_not_ready_queued(client, auth, uid):
+    h = auth(uid)
+    jid = await _create(client, idem_headers(h))
+    r = await client.get(f"/v1/jobs/{jid}/result", headers=h)
+    assert r.status_code == 409
+    err = r.json()["error"]
+    assert err["code"] == "result_not_ready"
+    assert err["retryable"] is True
+
+
 async def test_result_410_expired(client, auth, uid, deps, drain_fn):
     h = auth(uid)
     jid = await _create(client, idem_headers(h))

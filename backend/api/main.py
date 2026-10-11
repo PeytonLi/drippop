@@ -423,7 +423,7 @@ def create_app(deps: AppDeps | None = None) -> FastAPI:
         if job["status"] == "failed":
             raise ApiError(409, public_error_code(job) or "service_unavailable")
         if job["status"] in ("queued", "processing"):
-            raise ApiError(409, "invalid_request", "The preview isn't ready yet.", retryable=True)
+            raise ApiError(409, "result_not_ready", retryable=True)
         if not job["result_object_path"]:
             raise ApiError(503, "service_unavailable", retryable=True)
         try:
